@@ -48,76 +48,66 @@ fast-api-bq/
 ## Local Development
 
 1. Clone the repository:
-   ```bash
+   
    git clone https://github.com/MoizSajjad/fastapi-bigquery-demo.git
    cd fastapi-bigquery-demo
-````
 
 2. Create and activate virtual environment:
 
-   ```bash
+   
    python -m venv venv
    venv\Scripts\activate      # On Windows
    source venv/bin/activate   # On Linux/Mac
-   ```
+   
 
 3. Install dependencies:
 
-   ```bash
+   
    pip install -r requirements.txt
-   ```
+   
 
 4. Authenticate with Google Cloud:
 
-   ```bash
    gcloud auth application-default login
-   ```
+   
 
 5. Run locally:
 
-   ```bash
    uvicorn app:app --reload --host 0.0.0.0 --port 8086
-   ```
+
 
 6. Access locally:
 
    * Swagger UI: [http://localhost:8086/docs](http://localhost:8086/docs)
    * Health check: [http://localhost:8086/health](http://localhost:8086/health)
 
----
 
 ## Deployment to Google Cloud Run
 
 1. Set variables:
 
-   ```bash
    REGION="asia-south1"
    REPO="fastapi-repo"
-   ```
 
 2. Create Artifact Registry repository:
 
-   ```bash
    gcloud artifacts repositories create $REPO \
      --repository-format=docker --location=$REGION
-   ```
+   
 
 3. Build and push image:
-
-   ```bash
    gcloud builds submit \
      --tag "$REGION-docker.pkg.dev/<PROJECT_ID>/$REPO/voxels-api:v1"
-   ```
+   
 
 4. Deploy to Cloud Run:
 
-   ```bash
    gcloud run deploy voxels-api \
      --image="$REGION-docker.pkg.dev/<PROJECT_ID>/$REPO/voxels-api:v1" \
      --region=$REGION \
      --allow-unauthenticated \
      --set-env-vars="BQ_DATASET=demo_asia,BQ_TABLE=voxels"
-   ```
+   
 
 ---
 
@@ -125,9 +115,8 @@ fast-api-bq/
 
 Deployed URL (Cloud Run):
 
-```
+
 https://voxels-api-178398688763.asia-south1.run.app
-```
 
 ### Endpoints
 
@@ -139,17 +128,17 @@ https://voxels-api-178398688763.asia-south1.run.app
 
 Insert:
 
-```bash
+
 curl -X POST "https://voxels-api-178398688763.asia-south1.run.app/voxels/insert" \
 -H "Content-Type: application/json" \
 -d '[{"x":1,"y":2,"z":5,"value":0.55}]'
-```
+
 
 Query:
 
-```bash
+
 curl "https://voxels-api-178398688763.asia-south1.run.app/voxels/slice?z=5&days=7"
-```
+
 
 ---
 
@@ -159,9 +148,3 @@ curl "https://voxels-api-178398688763.asia-south1.run.app/voxels/slice?z=5&days=
 * Containerize an application with Docker and Cloud Build.
 * Deploy a serverless API on Cloud Run.
 * Expose clean REST endpoints on top of a data warehouse.
-
-
----
-
-Would you like me to also prepare a **shorter README.md (one-page max)** for your mentor submission (summary style), or keep this full professional version only?
-```
