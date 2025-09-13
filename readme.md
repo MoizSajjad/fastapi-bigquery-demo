@@ -1,189 +1,167 @@
+# FastAPI + BigQuery + Cloud Run Demo
 
-# Voxels API (FastAPI + BigQuery + Cloud Run)
-
-This project demonstrates a **serverless FastAPI service** deployed on **Google Cloud Run** that writes and reads data from **BigQuery**.
-
----
-
-##  Architecture
-- **FastAPI** REST API  
-- **Google BigQuery** dataset & table for storage  
-- **Artifact Registry** to store container images  
-- **Cloud Run** to deploy the service (scales to zero)  
+This project demonstrates how to build and deploy a serverless API with FastAPI, Google BigQuery, and Google Cloud Run. The service exposes endpoints to insert and query data in a BigQuery table.
 
 ---
 
-##  Project Structure
-```
+## Overview
 
-fast-api-bq/
-├── app.py              # FastAPI app (insert + query endpoints)
-├── bq\_sample.py        # Local test script for BigQuery
-├── requirements.txt    # Python dependencies
-├── Dockerfile          # Container definition
-└── README.md           # This file
-
-````
+- **Backend Framework**: FastAPI  
+- **Database**: Google BigQuery  
+- **Containerization**: Docker, built and pushed via Google Cloud Build  
+- **Deployment**: Google Cloud Run (serverless)  
 
 ---
 
-##  Setup
+## Data Model
 
-### 1. Clone repo & create virtual env
-```bash
-git clone <repo-url>
-cd fast-api-bq
-python -m venv venv
-source venv/bin/activate  # (Windows: venv\Scripts\activate)
-pip install -r requirements.txt
-````
-
-### 2. Authenticate with Google Cloud
-
-```bash
-gcloud init
-gcloud auth application-default login
-```
-
-### 3. BigQuery dataset & table
-
-Dataset: `demo_asia`
-Table: `voxels`
+**Dataset**: `demo_asia`  
+**Table**: `voxels`  
 
 Schema:
 
-| Column | Type      |
-| ------ | --------- |
-| ts     | TIMESTAMP |
-| x      | INT64     |
-| y      | INT64     |
-| z      | INT64     |
-| value  | FLOAT64   |
+| Column | Type      | Description             |
+|--------|-----------|-------------------------|
+| ts     | TIMESTAMP | Record timestamp        |
+| x      | INT64     | X coordinate            |
+| y      | INT64     | Y coordinate            |
+| z      | INT64     | Z coordinate (slice)    |
+| value  | FLOAT64   | Example numeric reading |
 
 ---
 
-##  Local Run
+## Project Structure
 
-### Run FastAPI app
-
-```bash
-uvicorn app:app --reload --host 0.0.0.0 --port 8086
 ```
 
-### Test endpoints
+fast-api-bq/
+│── app.py              # FastAPI app with insert/query endpoints
+│── bq\_sample.py        # Local BigQuery insert/query test script
+│── requirements.txt    # Python dependencies
+│── Dockerfile          # Container build instructions
+│── README.md           # Documentation
 
-* Health check: [http://localhost:8086/health](http://localhost:8086/health)
-* API docs (Swagger UI): [http://localhost:8086/docs](http://localhost:8086/docs)
-
-Example `POST`:
-
-```json
-[
-  {"x": 1, "y": 2, "z": 5, "value": 0.55}
-]
-```
+````
 
 ---
 
-## ☁️ Deployment on GCP
+## Local Development
 
-### 1. Build and push Docker image
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/MoizSajjad/fastapi-bigquery-demo.git
+   cd fastapi-bigquery-demo
+````
 
-```bash
-REGION="asia-south1"
-REPO="fastapi-repo"
-gcloud artifacts repositories create $REPO --repository-format=docker --location=$REGION
-gcloud builds submit --tag "$REGION-docker.pkg.dev/<PROJECT_ID>/$REPO/voxels-api:v1"
-```
+2. Create and activate virtual environment:
 
-### 2. Deploy to Cloud Run
+   ```bash
+   python -m venv venv
+   venv\Scripts\activate      # On Windows
+   source venv/bin/activate   # On Linux/Mac
+   ```
 
-```bash
-gcloud run deploy voxels-api \
-  --image="$REGION-docker.pkg.dev/<PROJECT_ID>/$REPO/voxels-api:v1" \
-  --region=$REGION \
-  --allow-unauthenticated \
-  --service-account="voxels-sa@<PROJECT_ID>.iam.gserviceaccount.com" \
-  --set-env-vars="BQ_DATASET=demo_asia,BQ_TABLE=voxels"
-```
+3. Install dependencies:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Authenticate with Google Cloud:
+
+   ```bash
+   gcloud auth application-default login
+   ```
+
+5. Run locally:
+
+   ```bash
+   uvicorn app:app --reload --host 0.0.0.0 --port 8086
+   ```
+
+6. Access locally:
+
+   * Swagger UI: [http://localhost:8086/docs](http://localhost:8086/docs)
+   * Health check: [http://localhost:8086/health](http://localhost:8086/health)
 
 ---
 
-##  Public URL
+## Deployment to Google Cloud Run
 
-After deploy, Cloud Run prints a URL like:
+1. Set variables:
 
-```
-https://voxels-api-<PROJECT_NUMBER>.asia-south1.run.app
-```
+   ```bash
+   REGION="asia-south1"
+   REPO="fastapi-repo"
+   ```
 
-* Health check: `GET /health`
-* Insert data: `POST /voxels/insert`
-* Query data: `GET /voxels/slice?z=5&days=7`
+2. Create Artifact Registry repository:
+
+   ```bash
+   gcloud artifacts repositories create $REPO \
+     --repository-format=docker --location=$REGION
+   ```
+
+3. Build and push image:
+
+   ```bash
+   gcloud builds submit \
+     --tag "$REGION-docker.pkg.dev/<PROJECT_ID>/$REPO/voxels-api:v1"
+   ```
+
+4. Deploy to Cloud Run:
+
+   ```bash
+   gcloud run deploy voxels-api \
+     --image="$REGION-docker.pkg.dev/<PROJECT_ID>/$REPO/voxels-api:v1" \
+     --region=$REGION \
+     --allow-unauthenticated \
+     --set-env-vars="BQ_DATASET=demo_asia,BQ_TABLE=voxels"
+   ```
 
 ---
 
-##  Example
+## Live Service
 
-### Insert
+Deployed URL (Cloud Run):
+
+```
+https://voxels-api-178398688763.asia-south1.run.app
+```
+
+### Endpoints
+
+* `GET /health` → Health check
+* `POST /voxels/insert` → Insert rows into BigQuery
+* `GET /voxels/slice?z=<int>&days=<int>` → Query rows
+
+### Example Requests
+
+Insert:
 
 ```bash
-curl -X POST "https://<SERVICE_URL>/voxels/insert" \
+curl -X POST "https://voxels-api-178398688763.asia-south1.run.app/voxels/insert" \
 -H "Content-Type: application/json" \
 -d '[{"x":1,"y":2,"z":5,"value":0.55}]'
 ```
 
-Response:
-
-```json
-{"inserted": 1}
-```
-
-### Query
+Query:
 
 ```bash
-curl "https://<SERVICE_URL>/voxels/slice?z=5&days=7"
-```
-
-Response:
-
-```json
-{
-  "rows": [
-    {"ts": "2025-09-13T14:30:52Z", "x": 1, "y": 2, "z": 5, "value": 0.55}
-  ]
-}
+curl "https://voxels-api-178398688763.asia-south1.run.app/voxels/slice?z=5&days=7"
 ```
 
 ---
 
-##  Notes
+## Learning Objectives
 
-* Service Account `voxels-sa` needs **BigQuery Data Editor** role.
-* Cloud Run scales to zero → no idle cost.
-* Billing budget recommended to avoid surprises.
+* Connect FastAPI with BigQuery for programmatic read/write.
+* Containerize an application with Docker and Cloud Build.
+* Deploy a serverless API on Cloud Run.
+* Expose clean REST endpoints on top of a data warehouse.
 
----
-
-##  Screenshots to include (for report/demo)
-
-* Swagger UI `/docs`
-* Successful POST/GET
-* BigQuery table with inserted rows
-* Cloud Run service page
 
 ---
 
-## 📝 Next Improvements
-
-* Input validation (bounds for x,y,z,value)
-* CORS for frontend use
-* Bulk inserts
-* CI/CD pipeline with Cloud Build
-
-```
-
----
-
-Do you want me to also create a **shorter "student submission style" README** (1-page max, no fluff, just what you did + how to test), or should I leave this detailed one as-is?
+Would you like me to also prepare a **shorter README.md (one-page max)** for your mentor submission (summary style), or keep this full professional version only?
 ```
